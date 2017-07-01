@@ -10,7 +10,7 @@ namespace Raft
 
     class Program
     {
-        static Task<PeerResponse> PeerRpc(PeerId peer, PeerRequest request)
+        static Task<PeerResponse> HandlePeerRpc(PeerId peer, PeerRequest request)
         {
             Console.WriteLine("Got PeerRpc request");
 
@@ -30,12 +30,12 @@ namespace Raft
                 },
             };
 
-            var KVStore0 = new KVStore<int>(config, config.Peers[0])
+            var keyValueStore0 = new KeyValueStore<int>(config, config.Peers[0])
             {
-                PerformPeerRpc = PeerRpc,
+                PerformPeerRpc = HandlePeerRpc,
             };
 
-            await KVStore0.Init();
+            await keyValueStore0.Init();
 
             Console.WriteLine("Hello World!");
         }

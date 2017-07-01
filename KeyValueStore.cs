@@ -6,7 +6,7 @@ namespace Raft
 {
     using System.Threading.Tasks;
 
-    public sealed class KVStore<T>
+    public sealed class KeyValueStore<T>
     {
         public struct GetRequest
         {
@@ -22,7 +22,7 @@ namespace Raft
         private PeerId _id;
         private Server<GetRequest, PutRequest<T>, T> _server;
 
-        public KVStore(Config config, PeerId self)
+        public KeyValueStore(Config config, PeerId self)
         {
             _id = self;
             _server = new Server<GetRequest, PutRequest<T>, T>(config);
