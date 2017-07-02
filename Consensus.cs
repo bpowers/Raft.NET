@@ -6,6 +6,8 @@ namespace Raft
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.Threading;
     using System.Threading.Tasks;
 
     internal sealed class Consensus<TWriteOp>
@@ -35,20 +37,87 @@ namespace Raft
         private State _state = State.Disconnected;
         internal PeerRpcDelegate _peerRpc;
 
-        internal Consensus(Config config, ILog<TWriteOp> log)
+        internal PeerId Id { get; private set; }
+
+        private Random _random;
+        private CancellationTokenSource _followerCancellationSource;
+        private DateTime _lastHeartbeat;
+
+        internal Consensus(PeerId id, Config config, ILog<TWriteOp> log)
         {
             _config = config;
+            Id = id;
+            _random = new Random(_config.PrngSeed[id]);
             _peerRpc = _config.PeerRpcDelegate;
             if (_peerRpc == null)
                 throw new InvalidOperationException("PerformPeerRpc must be set in Config");
             _log = log;
         }
 
+        private Task TransitionToCandidate()
+        {
+            throw new NotImplementedException();
+        }
+
+        private TimeSpan RandomElectionTimeout()
+        {
+            var timeoutSpan = (int)_config.ElectionTimeoutSpan.TotalMilliseconds;
+            var randomWait = Time.Milliseconds(_random.Next(timeoutSpan));
+            return _config.ElectionTimeoutMin.Add(randomWait);
+        }
+
+        private async Task FollowerTask(CancellationToken token)
+        {
+            var timeout = RandomElectionTimeout();
+
+            // loop, sleeping for ~ the broadcast (timeout) time.  If
+            // we have gone too long without
+            while (!_followerCancellationSource.IsCancellationRequested)
+            {
+                var sinceHeartbeat = DateTime.Now - _lastHeartbeat;
+                if (sinceHeartbeat > timeout)
+                {
+                    await TransitionToCandidate();
+                    return;
+                }
+
+                try
+                {
+                    await Task.Delay(timeout - sinceHeartbeat, token);
+                }
+                catch (TaskCanceledException)
+                {
+                    // cancelled or disposed means we are no longer a
+                    // follower, so end this task
+                    return;
+                }
+                catch (ObjectDisposedException)
+                {
+                    return;
+                }
+            }
+        }
+
+        private Task TransitionToFollower()
+        {
+            // we can transition to a follower from any state _but_ Follower
+            Debug.Assert(_state != State.Follower);
+
+            _lastHeartbeat = DateTime.Now;
+            _followerCancellationSource = new CancellationTokenSource();
+
+            Task.Run(() => FollowerTask(_followerCancellationSource.Token));
+
+            return Task.CompletedTask;
+        }
+
         // Initialize this node, which means transitioning from
         // Disconnected -> Candidate -> (Leader || Follower)
-        internal Task Init()
+        internal async Task Init()
         {
-            return Task.CompletedTask;
+            Debug.Assert(_state == State.Disconnected);
+
+            await TransitionToFollower();
         }
     }
 }

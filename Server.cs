@@ -8,15 +8,15 @@ namespace Raft
 
     public class Server<TReadOp, TWriteOp, TValue>
     {
-        public Server(Config config)
+        public Server(PeerId id, Config config)
         {
             _log = new Log<TWriteOp>(config);
-            _consensus = new Consensus<TWriteOp>(config, _log);
+            _consensus = new Consensus<TWriteOp>(id, config, _log);
         }
 
         private IStateMachine<TReadOp, TWriteOp, TValue> _stateMachine;
-        private ILog<TWriteOp> _log;
-        private Consensus<TWriteOp> _consensus;
+        private ILog<TWriteOp>                           _log;
+        private Consensus<TWriteOp>                      _consensus;
 
         public Task<ClientResponse<TValue>> HandleClientRpcAsync(ClientRequest<TReadOp, TWriteOp> message)
         {
@@ -26,7 +26,7 @@ namespace Raft
         }
 
         // Initialize this node, which means transitioning from
-        // Disconnected -> Candidate -> (Leader || Follower)
+        // Disconnected -> Follower -> Candidate -> (Leader || Follower)
         public async Task Init()
         {
             await _consensus.Init();

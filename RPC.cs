@@ -11,9 +11,9 @@ namespace Raft
     {
         int N;
 
-        public PeerId(int id)
+        public PeerId(int n)
         {
-            N = id;
+            N = n;
         }
     }
 
@@ -24,20 +24,20 @@ namespace Raft
 
     internal struct AppendEntriesRequest<T> : IPeerRequest
     {
-        Term                Term         { get; set; }
-        PeerId              LeaderId     { get; set; }
-        LogIndex            PrevLogIndex { get; set; }
-        Term                PrevLogTerm  { get; set; }
-        IList<ILogEntry<T>> Entries      { get; set; }
-        LogIndex            LeaderCommit { get; set; }
+        internal Term                Term         { get; set; }
+        internal PeerId              LeaderId     { get; set; }
+        internal LogIndex            PrevLogIndex { get; set; }
+        internal Term                PrevLogTerm  { get; set; }
+        internal IList<ILogEntry<T>> Entries      { get; set; }
+        internal LogIndex            LeaderCommit { get; set; }
     }
 
     internal struct RequestVoteRequest : IPeerRequest
     {
-        Term     Term         { get; set; }
-        PeerId   CandidateId  { get; set; }
-        LogIndex LastLogIndex { get; set; }
-        Term     LastLogTerm  { get; set; }
+        internal Term     Term         { get; set; }
+        internal PeerId   CandidateId  { get; set; }
+        internal LogIndex LastLogIndex { get; set; }
+        internal Term     LastLogTerm  { get; set; }
     }
 
     public interface IPeerResponse

@@ -10,7 +10,7 @@ namespace Raft
 
     public struct LogIndex
     {
-        public int N;
+        internal int N;
 
         public LogIndex(int n)
         {
@@ -20,7 +20,7 @@ namespace Raft
 
     public struct Term
     {
-        public int N;
+        internal int N;
 
         public Term(int n)
         {

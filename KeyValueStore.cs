@@ -37,10 +37,10 @@ namespace Raft
         private PeerId _id;
         private Server<GetRequest, PutRequest<T>, T> _server;
 
-        public KeyValueStore(Config config, PeerId self)
+        public KeyValueStore(PeerId id, Config config)
         {
-            _id = self;
-            _server = new Server<GetRequest, PutRequest<T>, T>(config);
+            _id = id;
+            _server = new Server<GetRequest, PutRequest<T>, T>(id, config);
         }
 
         public Task Init()
