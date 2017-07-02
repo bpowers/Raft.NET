@@ -7,8 +7,50 @@ namespace Raft
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
+    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
+
+    internal sealed class VoteLedger
+    {
+        readonly int QuorumSize;
+        IList<PeerId> Votes { get; set; } = new List<PeerId>();
+        // explicit responses we've received where we didn't get the
+        // vote. |Votes| + |Nacks| == TotalReplyCount
+        IList<PeerId> Nacks { get; set; } = new List<PeerId>();
+
+        VoteLedger(Config config)
+        {
+            // TODO: if we have e.g. 6 peers -- is this actually
+            // correct?  I think so, for majority we need > 50% (half
+            // is not majority)
+            QuorumSize = config.Peers.Count / 2 + 1;
+        }
+
+        void Record(RequestVoteResponse response)
+        {
+            // TODO: what to do with response.Term?
+
+            if (response.VoteGranted)
+            {
+                Votes.Add(response.Sender);
+            }
+            else
+            {
+                Nacks.Add(response.Sender);
+            }
+        }
+
+        bool Elected()
+        {
+            return Votes.Count >= QuorumSize;
+        }
+
+        bool VoteFailed()
+        {
+            return Nacks.Count >= QuorumSize;
+        }
+    }
 
     internal sealed class Consensus<TWriteOp>
     {
@@ -61,7 +103,7 @@ namespace Raft
             throw new NotImplementedException();
         }
 
-        private Task<bool> WaitMajority(IList<Task<RequestVoteResponse>> responses, CancellationToken cancellationToken)
+        private Task<bool> WaitMajority(IEnumerable<Task<IPeerResponse>> responses, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
@@ -85,17 +127,28 @@ namespace Raft
 
             _currentTerm.N++;
 
-            // need data structure for vote responses (both positive + neg)
-
-            // vote for self
+            var ledger = new VoteLedger(_config);
+            // vote for ourselves
+            ledger.Record(new RequestVoteResponse()
+                {
+                    Sender = Id,
+                    Term = _currentTerm,
+                    VoteGranted = true,
+                });
 
             // we reset the election timer right before
             // TransitionToCandidate is called
 
-            // send voterpc messages to other servers
-            var requests = new List<Task<RequestVoteResponse>>();
+            IEnumerable<Task<IPeerResponse>> responses =
+                _config.Peers.Where(id => id.N != Id.N).Select(id => _peerRpc(id, new RequestVoteRequest()
+                    {
+                        Term = _currentTerm,
+                        CandidateId = Id,
+                        LastLogIndex = _lastApplied,
+                        LastLogTerm = _log.Get(_lastApplied).Term,
+                    }));
 
-            var receivedMajority = await WaitMajority(requests, cancellationToken);
+            var receivedMajority = await WaitMajority(responses, cancellationToken);
             if (!receivedMajority)
             {
                 _electionCancellationSource.Cancel();

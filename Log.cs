@@ -38,6 +38,7 @@ namespace Raft
     internal interface ILog<TWriteOp>
     {
         Task<bool> WriteAsync(ILogEntry<TWriteOp> entry);
+        ILogEntry<TWriteOp> Get(LogIndex index);
     }
 
     internal class Log<TWriteOp> : ILog<TWriteOp>
@@ -56,6 +57,11 @@ namespace Raft
                 throw new InvalidOperationException("too far ahead");
 
             return Task.FromResult(true);
+        }
+
+        public ILogEntry<TWriteOp> Get(LogIndex index)
+        {
+            return _log[index.N];
         }
     }
 }
