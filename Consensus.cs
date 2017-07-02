@@ -61,7 +61,7 @@ namespace Raft
             throw new NotImplementedException();
         }
 
-        private async Task<bool> WaitMajority(IList<Task<RequestVoteResponse>> responses, CancellationToken cancellationToken)
+        private Task<bool> WaitMajority(IList<Task<RequestVoteResponse>> responses, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
@@ -118,41 +118,34 @@ namespace Raft
 
         private async Task ElectionTimeoutTask(CancellationToken cancelationToken)
         {
-            try
-            {
-                var timeout = RandomElectionTimeout();
+            var timeout = RandomElectionTimeout();
 
-                // loop, sleeping for ~ the broadcast (timeout) time.  If
-                // we have gone too long without
-                while (!_timeoutCancellationSource.IsCancellationRequested)
+            // loop, sleeping for ~ the broadcast (timeout) time.  If
+            // we have gone too long without
+            while (!_timeoutCancellationSource.IsCancellationRequested)
+            {
+                var sinceHeartbeat = DateTime.Now - _lastHeartbeat;
+                if (sinceHeartbeat > timeout)
                 {
-                    var sinceHeartbeat = DateTime.Now - _lastHeartbeat;
-                    if (sinceHeartbeat > timeout)
-                    {
-                        ResetElectionTimer();
-                        Task.Run(function: TransitionToCandidate);
-                        continue;
-                    }
-
-                    try
-                    {
-                        await Task.Delay(timeout - sinceHeartbeat, cancelationToken);
-                    }
-                    catch (TaskCanceledException)
-                    {
-                        // cancelled or disposed means we are no longer a
-                        // follower, so end this task
-                        return;
-                    }
-                    catch (ObjectDisposedException)
-                    {
-                        return;
-                    }
+                    ResetElectionTimer();
+                    Supervised.Run(function: TransitionToCandidate);
+                    continue;
                 }
-            }
-            catch (Exception exception)
-            {
-                Console.WriteLine("Error in election timeout task: " + exception);
+
+                try
+                {
+                    await Task.Delay(timeout - sinceHeartbeat, cancelationToken);
+                }
+                catch (TaskCanceledException)
+                {
+                    // cancelled or disposed means we are no longer a
+                    // follower, so end this task
+                    return;
+                }
+                catch (ObjectDisposedException)
+                {
+                    return;
+                }
             }
         }
 
@@ -164,8 +157,7 @@ namespace Raft
             _state = State.Follower;
             _timeoutCancellationSource = new CancellationTokenSource();
 
-            // TODO: wrap this in a try catch to report errors
-            Task.Run(() => ElectionTimeoutTask(_timeoutCancellationSource.Token));
+            Supervised.Run(() => ElectionTimeoutTask(_timeoutCancellationSource.Token));
 
             return Task.CompletedTask;
         }
