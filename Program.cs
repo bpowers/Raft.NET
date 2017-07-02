@@ -8,6 +8,7 @@ namespace Raft
     using System.Collections.Generic;
     using System.Linq;
     using System.Security.Cryptography;
+    using System.Threading;
     using System.Threading.Tasks;
 
     class Program
@@ -51,7 +52,7 @@ namespace Raft
 
             await keyValueStore0.Init();
 
-            Console.WriteLine("Hello World!");
+            await Task.Delay(Timeout.Infinite);
         }
     }
 }

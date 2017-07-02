@@ -56,6 +56,7 @@ namespace Raft
 
         private Task TransitionToCandidate()
         {
+            Console.WriteLine("transitioning to a candidate");
             throw new NotImplementedException();
         }
 
@@ -103,9 +104,9 @@ namespace Raft
             // we can transition to a follower from any state _but_ Follower
             Debug.Assert(_state != State.Follower);
 
-            _lastHeartbeat = DateTime.Now;
             _followerCancellationSource = new CancellationTokenSource();
 
+            // TODO: wrap this in a try catch to report errors
             Task.Run(() => FollowerTask(_followerCancellationSource.Token));
 
             return Task.CompletedTask;
@@ -116,6 +117,8 @@ namespace Raft
         internal async Task Init()
         {
             Debug.Assert(_state == State.Disconnected);
+
+            _lastHeartbeat = DateTime.Now;
 
             await TransitionToFollower();
         }
