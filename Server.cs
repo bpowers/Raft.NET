@@ -6,38 +6,6 @@ namespace Raft
 {
     using System.Threading.Tasks;
 
-    public struct PeerId
-    {
-        int N;
-
-        public PeerId(int id)
-        {
-            N = id;
-        }
-    }
-
-    public interface IPeerRequest {}
-
-    public sealed class AppendEntriesRequest : IPeerRequest
-    {
-    }
-
-    public sealed class RequestVoteRequest : IPeerRequest
-    {
-    }
-
-    public interface IPeerResponse {}
-
-    public sealed class AppendEntriesResponse : IPeerResponse
-    {
-    }
-
-    public sealed class RequestVoteResponse : IPeerResponse
-    {
-    }
-
-    public delegate Task<IPeerResponse> PeerRpcDelegate(PeerId peer, IPeerRequest request);
-
     public class Server<TReadOp, TWriteOp, TValue>
     {
         public Server(Config config)
