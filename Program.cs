@@ -10,12 +10,11 @@ namespace Raft
 
     class Program
     {
-        static Task<PeerResponse> HandlePeerRpc(PeerId peer, PeerRequest request)
+        static Task<IPeerResponse> HandlePeerRpc(PeerId peer, IPeerRequest request)
         {
             Console.WriteLine("Got PeerRpc request");
 
-            var response = new PeerResponse();
-            return Task.FromResult(response);
+            return Task.FromResult((IPeerResponse)null);
         }
 
         static async Task Main(string[] args)
@@ -28,12 +27,10 @@ namespace Raft
                     new PeerId(2),
                     new PeerId(3),
                 },
+                PeerRpcDelegate = HandlePeerRpc,
             };
 
-            var keyValueStore0 = new KeyValueStore<int>(config, config.Peers[0])
-            {
-                PerformPeerRpc = HandlePeerRpc,
-            };
+            var keyValueStore0 = new KeyValueStore<int>(config, config.Peers[0]);
 
             await keyValueStore0.Init();
 

@@ -16,42 +16,45 @@ namespace Raft
         }
     }
 
-    public class PeerRequest
+    public interface IPeerRequest {}
+
+    public sealed class AppendEntriesRequest : IPeerRequest
     {
     }
 
-    public class PeerResponse
+    public sealed class RequestVoteRequest : IPeerRequest
     {
     }
 
-    public delegate Task<PeerResponse> PeerRpcDelegate(PeerId peer, PeerRequest request);
+    public interface IPeerResponse {}
+
+    public sealed class AppendEntriesResponse : IPeerResponse
+    {
+    }
+
+    public sealed class RequestVoteResponse : IPeerResponse
+    {
+    }
+
+    public delegate Task<IPeerResponse> PeerRpcDelegate(PeerId peer, IPeerRequest request);
 
     public class Server<TReadOp, TWriteOp, TValue>
     {
         public Server(Config config)
         {
-            _consensus = new Consensus(config);
+            _log = new Log<TWriteOp>(config);
+            _consensus = new Consensus<TWriteOp>(config, _log);
         }
 
         private IStateMachine<TReadOp, TWriteOp, TValue> _stateMachine;
         private ILog<TWriteOp> _log;
-        private PeerRpcDelegate _performPeerRpc;
-        private Consensus _consensus;
+        private Consensus<TWriteOp> _consensus;
 
         public Task<ClientResponse<TValue>> HandleClientRpcAsync(ClientRequest<TReadOp, TWriteOp> message)
         {
             var response = new ClientResponse<TValue>();
 
             return Task.FromResult(response);
-        }
-
-        public PeerRpcDelegate PerformPeerRpc
-        {
-            set
-            {
-                _performPeerRpc = value;
-                _consensus.PerformPeerRpc = value;
-            }
         }
 
         // Initialize this node, which means transitioning from

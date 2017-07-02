@@ -4,16 +4,28 @@
 
 namespace Raft
 {
+    using System;
+    using System.Collections.Generic;
     using System.Threading.Tasks;
 
     public struct LogIndex
     {
-        int N;
+        public int N;
+
+        public LogIndex(int n)
+        {
+            N = n;
+        }
     }
 
     public struct Term
     {
-        int N;
+        public int N;
+
+        public Term(int n)
+        {
+            N = n;
+        }
     }
 
     internal interface ILogEntry<TWriteOp>
@@ -25,6 +37,25 @@ namespace Raft
 
     internal interface ILog<TWriteOp>
     {
-        Task WriteAsync(ILogEntry<TWriteOp> entry);
+        Task<bool> WriteAsync(ILogEntry<TWriteOp> entry);
+    }
+
+    internal class Log<TWriteOp> : ILog<TWriteOp>
+    {
+        Config _config;
+        List<ILogEntry<TWriteOp>> _log = new List<ILogEntry<TWriteOp>>();
+
+        public Log(Config config)
+        {
+            _config = config;
+        }
+
+        public Task<bool> WriteAsync(ILogEntry<TWriteOp> entry)
+        {
+            if (entry.Index.N > _log.Count)
+                throw new InvalidOperationException("too far ahead");
+
+            return Task.FromResult(true);
+        }
     }
 }

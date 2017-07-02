@@ -19,6 +19,21 @@ namespace Raft
             TValue Value { get; set; }
         }
 
+        internal class StateMachine: IStateMachine<GetRequest, PutRequest<T>, T>
+        {
+            public Task<IStateMachine<GetRequest, PutRequest<T>, T>> ApplyAsync(PutRequest<T> operation)
+            {
+                IStateMachine<GetRequest, PutRequest<T>, T> stateMachine = this;
+
+                return Task.FromResult(stateMachine);
+            }
+
+            public Task<T> ReadAsync(GetRequest operation)
+            {
+                return Task.FromResult(default(T));
+            }
+        }
+
         private PeerId _id;
         private Server<GetRequest, PutRequest<T>, T> _server;
 
@@ -26,14 +41,6 @@ namespace Raft
         {
             _id = self;
             _server = new Server<GetRequest, PutRequest<T>, T>(config);
-        }
-
-        public PeerRpcDelegate PerformPeerRpc
-        {
-            set
-            {
-                _server.PerformPeerRpc = value;
-            }
         }
 
         public Task Init()

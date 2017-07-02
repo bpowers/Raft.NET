@@ -9,5 +9,6 @@ namespace Raft
     public class Config
     {
         public IList<PeerId> Peers { get; set; }
+        public PeerRpcDelegate PeerRpcDelegate { get; set; }
     }
 }
