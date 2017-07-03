@@ -19,7 +19,7 @@ namespace Raft
         // vote. |Votes| + |Nacks| == TotalReplyCount
         IList<PeerId> Nacks { get; set; } = new List<PeerId>();
 
-        VoteLedger(Config config)
+        internal VoteLedger(Config config)
         {
             // TODO: if we have e.g. 6 peers -- is this actually
             // correct?  I think so, for majority we need > 50% (half
@@ -27,7 +27,7 @@ namespace Raft
             QuorumSize = config.Peers.Count / 2 + 1;
         }
 
-        void Record(RequestVoteResponse response)
+        internal void Record(RequestVoteResponse response)
         {
             // TODO: what to do with response.Term?
 

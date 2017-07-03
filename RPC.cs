@@ -47,16 +47,16 @@ namespace Raft
 
     internal struct AppendEntriesResponse : IPeerResponse
     {
-        PeerId Sender  { get; set; }
-        Term   Term    { get; set; } // for leader to update itself
-        bool   Success { get; set; } // true if follower contained entry matching PrevLogIndex and PrevLogTerm
+        internal PeerId Sender  { get; set; }
+        internal Term   Term    { get; set; } // for leader to update itself
+        internal bool   Success { get; set; } // true if follower contained entry matching PrevLogIndex and PrevLogTerm
     }
 
     internal struct RequestVoteResponse : IPeerResponse
     {
-        PeerId Sender      { get; set; }
-        Term   Term        { get; set; } // for leader to update itself
-        bool   VoteGranted { get; set; } // true if candidate received vote
+        internal PeerId Sender      { get; set; }
+        internal Term   Term        { get; set; } // for leader to update itself
+        internal bool   VoteGranted { get; set; } // true if candidate received vote
     }
 
     // Delegate definition for embedder to expose to Raft Server.
