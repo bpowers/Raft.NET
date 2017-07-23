@@ -143,6 +143,13 @@ namespace Raft
             _log = log;
         }
 
+        internal Task<IPeerResponse> HandlePeerRpc(IPeerRequest request)
+        {
+            Console.WriteLine($"{Id.N} Got PeerRpc request {request}");
+
+            return Task.FromResult((IPeerResponse)null);
+        }
+
         private Task TransitionToLeader()
         {
             throw new NotImplementedException();

@@ -13,11 +13,10 @@ namespace Raft
 
     class Program
     {
+        static IDictionary<PeerId, KeyValueStore<int>> peers = new Dictionary<PeerId, KeyValueStore<int>>();
         static Task<IPeerResponse> HandlePeerRpc(PeerId peer, IPeerRequest request)
         {
-            Console.WriteLine($"Got PeerRpc request for {peer.N}");
-
-            return Task.FromResult((IPeerResponse)null);
+            return peers[peer].Server.HandlePeerRpc(request);
         }
 
         static int RandomInt32(RandomNumberGenerator rng)
@@ -29,7 +28,7 @@ namespace Raft
 
         static async Task Main(string[] args)
         {
-            var peers = new List<PeerId>()
+            var peerIds = new List<PeerId>()
             {
                 new PeerId(1),
                 new PeerId(2),
@@ -37,20 +36,22 @@ namespace Raft
             };
 
             var rng = RandomNumberGenerator.Create();
-            var seeds = peers.ToDictionary(p => p, p => RandomInt32(rng));
+            var seeds = peerIds.ToDictionary(p => p, p => RandomInt32(rng));
             rng.Dispose();
             rng = null;
 
             var config = new Config()
             {
-                Peers = peers,
+                Peers = peerIds,
                 PrngSeed = seeds,
                 PeerRpcDelegate = HandlePeerRpc,
             };
 
-            var keyValueStore0 = new KeyValueStore<int>(config.Peers[0], config);
+            peers = peerIds.ToDictionary(id => id, id => new KeyValueStore<int>(id, config));
 
-            await keyValueStore0.Init();
+            await Task.WhenAll(peers.Values.Select(async (peer) => await peer.Init()).ToArray());
+
+            Console.WriteLine("All peers initialized.");
 
             await Task.Delay(Timeout.Infinite);
         }

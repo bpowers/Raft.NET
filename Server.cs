@@ -25,6 +25,11 @@ namespace Raft
             return Task.FromResult(response);
         }
 
+        public Task<IPeerResponse> HandlePeerRpc(IPeerRequest request)
+        {
+            return _consensus.HandlePeerRpc(request);
+        }
+
         // Initialize this node, which means transitioning from
         // Disconnected -> Follower -> Candidate -> (Leader || Follower)
         public async Task Init()
