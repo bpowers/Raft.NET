@@ -15,7 +15,7 @@ namespace Raft
     {
         static Task<IPeerResponse> HandlePeerRpc(PeerId peer, IPeerRequest request)
         {
-            Console.WriteLine("Got PeerRpc request");
+            Console.WriteLine($"Got PeerRpc request for {peer.N}");
 
             return Task.FromResult((IPeerResponse)null);
         }

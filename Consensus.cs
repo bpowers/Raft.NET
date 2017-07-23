@@ -65,8 +65,6 @@ namespace Raft
 
         internal Task<bool> WaitMajority(IEnumerable<Task<IPeerResponse>> responses, CancellationToken cancellationToken)
         {
-            var votes = 0;
-
             foreach (var responseTask in responses)
             {
                 Task.Run(async () => {
@@ -195,7 +193,16 @@ namespace Raft
                         LastLogTerm = lastTerm,
                     }));
 
-            var receivedMajority = await ledger.WaitMajority(responses, cancellationToken);
+            bool receivedMajority = false;
+            try
+            {
+                receivedMajority = await ledger.WaitMajority(responses, cancellationToken);
+            }
+            catch (TaskCanceledException)
+            {
+                return;
+            }
+
             if (!receivedMajority)
             {
                 _electionCancellationSource.Cancel();
