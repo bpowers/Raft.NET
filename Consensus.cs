@@ -13,22 +13,36 @@ namespace Raft
 
     internal sealed class VoteLedger
     {
+        readonly int PeerCount;
         readonly int QuorumSize;
         IList<PeerId> Votes { get; set; } = new List<PeerId>();
         // explicit responses we've received where we didn't get the
         // vote. |Votes| + |Nacks| == TotalReplyCount
         IList<PeerId> Nacks { get; set; } = new List<PeerId>();
 
-        internal VoteLedger(Config config)
+        private bool _completed;
+        private CancellationToken _token;
+        private TaskCompletionSource<bool> _completionSource;
+
+        internal VoteLedger(Config config, CancellationToken token)
         {
+            _token = token;
+            _completionSource = new TaskCompletionSource<bool>();
+
+            _token.Register(() => _completionSource.TrySetCanceled());
+
             // TODO: if we have e.g. 6 peers -- is this actually
             // correct?  I think so, for majority we need > 50% (half
             // is not majority)
             QuorumSize = config.Peers.Count / 2 + 1;
+            PeerCount = config.Peers.Count;
         }
 
         internal void Record(RequestVoteResponse response)
         {
+            if (_completed)
+                return;
+
             // TODO: what to do with response.Term?
 
             if (response.VoteGranted)
@@ -39,6 +53,39 @@ namespace Raft
             {
                 Nacks.Add(response.Sender);
             }
+
+
+            if (Votes.Count >= QuorumSize || Nacks.Count >= QuorumSize ||
+                Votes.Count + Nacks.Count == PeerCount)
+            {
+                _completed = true;
+                _completionSource.SetResult(Votes.Count >= QuorumSize);
+            }
+        }
+
+        internal Task<bool> WaitMajority(IEnumerable<Task<IPeerResponse>> responses, CancellationToken cancellationToken)
+        {
+            var votes = 0;
+
+            foreach (var responseTask in responses)
+            {
+                Task.Run(async () => {
+                        try
+                        {
+                            var result = await responseTask;
+                            if (result is RequestVoteResponse response)
+                            {
+                                this.Record(response);
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine($"WaitMajority exception: {e}");
+                        }
+                    }, _token);
+            }
+
+            return _completionSource.Task;
         }
 
         bool Elected()
@@ -103,11 +150,6 @@ namespace Raft
             throw new NotImplementedException();
         }
 
-        private Task<bool> WaitMajority(IEnumerable<Task<IPeerResponse>> responses, CancellationToken cancellationToken)
-        {
-            throw new NotImplementedException();
-        }
-
         private async Task TransitionToCandidate()
         {
             // Leaders and disconnected servers cannot transition
@@ -127,7 +169,7 @@ namespace Raft
 
             _currentTerm.N++;
 
-            var ledger = new VoteLedger(_config);
+            var ledger = new VoteLedger(_config, cancellationToken);
             // vote for ourselves
             ledger.Record(new RequestVoteResponse()
                 {
@@ -139,16 +181,21 @@ namespace Raft
             // we reset the election timer right before
             // TransitionToCandidate is called
 
+            var lastTerm = Term.Invalid;
+            // FIXME: should _lastApplied be -1, and check for that here?
+            if (_log.Length > 0)
+                lastTerm = _log.Get(_lastApplied).Term;
+
             IEnumerable<Task<IPeerResponse>> responses =
                 _config.Peers.Where(id => id.N != Id.N).Select(id => _peerRpc(id, new RequestVoteRequest()
                     {
                         Term = _currentTerm,
                         CandidateId = Id,
                         LastLogIndex = _lastApplied,
-                        LastLogTerm = _log.Get(_lastApplied).Term,
+                        LastLogTerm = lastTerm,
                     }));
 
-            var receivedMajority = await WaitMajority(responses, cancellationToken);
+            var receivedMajority = await ledger.WaitMajority(responses, cancellationToken);
             if (!receivedMajority)
             {
                 _electionCancellationSource.Cancel();
@@ -156,6 +203,7 @@ namespace Raft
                 _electionCancellationSource = null;
                 return;
             }
+
 
             await TransitionToLeader();
         }
