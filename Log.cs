@@ -10,6 +10,8 @@ namespace Raft
 
     public struct LogIndex
     {
+        public static readonly LogIndex Invalid = new LogIndex(-1);
+
         internal int N;
 
         public LogIndex(int n)
@@ -20,6 +22,8 @@ namespace Raft
 
     public struct Term
     {
+        public static readonly Term Invalid = new Term(-1);
+
         internal int N;
 
         public Term(int n)
@@ -37,6 +41,7 @@ namespace Raft
 
     internal interface ILog<TWriteOp>
     {
+        int Length { get; }
         Task<bool> WriteAsync(ILogEntry<TWriteOp> entry);
         ILogEntry<TWriteOp> Get(LogIndex index);
     }
@@ -62,6 +67,11 @@ namespace Raft
         public ILogEntry<TWriteOp> Get(LogIndex index)
         {
             return _log[index.N];
+        }
+
+        public int Length
+        {
+            get { return _log.Count; }
         }
     }
 }
