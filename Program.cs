@@ -26,6 +26,14 @@ namespace Raft
             return BitConverter.ToInt32(bytes, 0);
         }
 
+        static IDictionary<PeerId, int> GenerateRandomSeeds(List<PeerId> peerIds)
+        {
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                return peerIds.ToDictionary(p => p, p => RandomInt32(rng));
+            }
+        }
+
         static async Task Main(string[] args)
         {
             var peerIds = new List<PeerId>()
@@ -35,15 +43,10 @@ namespace Raft
                 new PeerId(3),
             };
 
-            var rng = RandomNumberGenerator.Create();
-            var seeds = peerIds.ToDictionary(p => p, p => RandomInt32(rng));
-            rng.Dispose();
-            rng = null;
-
             var config = new Config()
             {
                 Peers = peerIds,
-                PrngSeed = seeds,
+                PrngSeed = GenerateRandomSeeds(peerIds),
                 PeerRpcDelegate = HandlePeerRpc,
             };
 
