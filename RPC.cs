@@ -15,6 +15,26 @@ namespace Raft
         {
             N = n;
         }
+
+        public override bool Equals(object obj)
+        {
+            return base.Equals(obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
+
+        public static bool operator ==(PeerId a, PeerId b)
+        {
+            return a.N == b.N;
+        }
+
+        public static bool operator !=(PeerId a, PeerId b)
+        {
+            return a.N != b.N;
+        }
     }
 
     public interface IPeerRequest

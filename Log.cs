@@ -18,6 +18,36 @@ namespace Raft
         {
             N = n;
         }
+
+        public override bool Equals(object obj)
+        {
+            return base.Equals(obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
+
+        public static bool operator ==(LogIndex a, LogIndex b)
+        {
+            return a.N == b.N;
+        }
+
+        public static bool operator !=(LogIndex a, LogIndex b)
+        {
+            return a.N != b.N;
+        }
+
+        public static bool operator >=(LogIndex a, LogIndex b)
+        {
+            return a.N >= b.N;
+        }
+
+        public static bool operator <=(LogIndex a, LogIndex b)
+        {
+            return a.N <= b.N;
+        }
     }
 
     public struct Term
@@ -29,6 +59,36 @@ namespace Raft
         public Term(int n)
         {
             N = n;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return base.Equals(obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
+
+        public static bool operator ==(Term a, Term b)
+        {
+            return a.N == b.N;
+        }
+
+        public static bool operator !=(Term a, Term b)
+        {
+            return a.N != b.N;
+        }
+
+        public static bool operator >=(Term a, Term b)
+        {
+            return a.N >= b.N;
+        }
+
+        public static bool operator <=(Term a, Term b)
+        {
+            return a.N <= b.N;
         }
     }
 

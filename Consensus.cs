@@ -143,15 +143,82 @@ namespace Raft
             _log = log;
         }
 
+        internal async Task<IPeerResponse> HandleVoteRequest(RequestVoteRequest request)
+        {
+            bool voteGranted = false;
+            var lastTerm = Term.Invalid;
+            // FIXME: should _lastApplied be -1, and check for that here?
+            if (_log.Length > 0)
+                lastTerm = _log.Get(_lastApplied).Term;
+
+            if (request.Term >= _currentTerm &&
+                (!_votedFor.HasValue || _votedFor.Value == request.CandidateId) &&
+                (request.LastLogIndex >= _lastApplied && request.LastLogTerm >= lastTerm))
+            {
+                _currentTerm = request.Term;
+
+                if (_state != State.Follower)
+                    await TransitionToFollower();
+
+                voteGranted = true;
+                _votedFor = request.CandidateId;
+                ResetElectionTimer();
+            }
+
+            return new RequestVoteResponse()
+            {
+                Sender = Id,
+                Term = _currentTerm,
+                VoteGranted = voteGranted,
+            };
+        }
+
         internal Task<IPeerResponse> HandlePeerRpc(IPeerRequest request)
         {
-            Console.WriteLine($"{Id.N} Got PeerRpc request {request}");
+            switch (request) {
+                case RequestVoteRequest voteRequest:
+                    return HandleVoteRequest(voteRequest);
+                default:
+                    Console.WriteLine($"{Id.N} Got UNHANDLED PeerRpc request {request}");
+                    break;
+            }
 
             return Task.FromResult((IPeerResponse)null);
         }
 
         private Task TransitionToLeader()
         {
+            // only a candidate can be a leader
+            Debug.Assert(_state == State.Candidate);
+
+            // cancel any previous election we are a candidate in (e.g. it timed out)
+            if (_electionCancellationSource != null)
+            {
+                _electionCancellationSource.Cancel();
+                _electionCancellationSource.Dispose();
+                _electionCancellationSource = null;
+            }
+
+            // Send initial empty AppendEntries RPCs (heartbeat) to
+            // each server; repeat during idle periods to prevent
+            // election timeout
+
+            // If command received from client: append entry to local log,
+            // respond after entry applied to state machine (§5.3)
+
+            // If last log index ≥ nextIndex for a follower: send
+            // AppendEntries RPC with log entries starting at nextIndex
+
+            // If successful: update nextIndex and matchIndex for
+            // follower (§5.3)
+
+            // If AppendEntries fails because of log inconsistency:
+            // decrement nextIndex and retry (§5.3)
+
+            // If there exists an N such that N > commitIndex, a majority
+            // of matchIndex[i] ≥ N, and log[N].term == currentTerm:
+            // set commitIndex = N (§5.3, §5.4).
+
             throw new NotImplementedException();
         }
 
