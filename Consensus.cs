@@ -15,10 +15,11 @@ namespace Raft
     {
         readonly int PeerCount;
         readonly int QuorumSize;
-        IList<PeerId> Votes { get; set; } = new List<PeerId>();
+
+        public IList<PeerId> Votes { get; set; } = new List<PeerId>();
         // explicit responses we've received where we didn't get the
         // vote. |Votes| + |Nacks| == TotalReplyCount
-        IList<PeerId> Nacks { get; set; } = new List<PeerId>();
+        public IList<PeerId> Nacks { get; set; } = new List<PeerId>();
 
         private bool _completed;
         private CancellationToken _token;
@@ -162,8 +163,10 @@ namespace Raft
             {
                 _currentTerm = request.Term;
 
-                if (_state != State.Follower)
+                if (_state != State.Follower) {
+                    Console.WriteLine("Vote: transitioning to follower");
                     await TransitionToFollower();
+                }
 
                 voteGranted = true;
                 _votedFor = request.CandidateId;
@@ -204,12 +207,16 @@ namespace Raft
                 _electionCancellationSource = null;
             }
 
-            Console.WriteLine($"Look at me, I ({Id}) am the leader now.");
+            Console.WriteLine($"Look at me, I ({Id.N}) am the leader now of term {_currentTerm.N}.");
 
-            // Send initial empty AppendEntries RPCs (heartbeat) to
-            // each server; repeat during idle periods to prevent
-            // election timeout
+            // send now, and TODO: repeat during idle periods to prevent election timeout
+            Heartbeat();
 
+            return Task.CompletedTask;
+        }
+
+        private void HandleClientRequest()
+        {
             // If command received from client: append entry to local log,
             // respond after entry applied to state machine (§5.3)
 
@@ -225,8 +232,18 @@ namespace Raft
             // If there exists an N such that N > commitIndex, a majority
             // of matchIndex[i] ≥ N, and log[N].term == currentTerm:
             // set commitIndex = N (§5.3, §5.4).
+        }
 
-            throw new NotImplementedException();
+        private void Heartbeat()
+        {
+            // send AppendEntries RPCs to each server
+            // if that server's nextIndex <= log index, send w/ log entries starting at nextIndex
+            // else send empty AppendEntries RPC
+        }
+
+        private void SendAppendEntriesRpc()
+        {
+
         }
 
         private async Task TransitionToCandidate()
@@ -234,6 +251,9 @@ namespace Raft
             // Leaders and disconnected servers cannot transition
             // directly to candidates.
             Debug.Assert(_state == State.Follower || _state == State.Candidate);
+
+            // ensure we are now in Candidate state
+            _state = State.Candidate;
 
             // cancel any previous election we are a candidate in (e.g. it timed out)
             if (_electionCancellationSource != null)
@@ -294,6 +314,8 @@ namespace Raft
                 _electionCancellationSource = null;
                 return;
             }
+
+            Console.WriteLine($"Node({Id.N}): received {ledger.Votes.Count}/{_config.Peers.Count} ({ledger.Votes.Count + ledger.Nacks.Count} responses)");
 
             await TransitionToLeader();
         }
