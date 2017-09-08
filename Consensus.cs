@@ -157,6 +157,7 @@ namespace Raft
             if (_log.Length > 0)
                 lastTerm = _log.Get(_lastApplied).Term;
 
+            // if (((_state == State.Candidate && request.Term > _currentTerm) || (request.Term >= _currentTerm)) &&
             if (request.Term >= _currentTerm &&
                 (!_votedFor.HasValue || _votedFor.Value == request.CandidateId) &&
                 (request.LastLogIndex >= _lastApplied && request.LastLogTerm >= lastTerm))
@@ -164,7 +165,6 @@ namespace Raft
                 _currentTerm = request.Term;
 
                 if (_state != State.Follower) {
-                    Console.WriteLine("Vote: transitioning to follower");
                     await TransitionToFollower();
                 }
 

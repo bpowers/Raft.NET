@@ -48,6 +48,16 @@ namespace Raft
         {
             return a.N <= b.N;
         }
+
+        public static bool operator >(LogIndex a, LogIndex b)
+        {
+            return a.N > b.N;
+        }
+
+        public static bool operator <(LogIndex a, LogIndex b)
+        {
+            return a.N < b.N;
+        }
     }
 
     public struct Term
@@ -89,6 +99,16 @@ namespace Raft
         public static bool operator <=(Term a, Term b)
         {
             return a.N <= b.N;
+        }
+
+        public static bool operator >(Term a, Term b)
+        {
+            return a.N > b.N;
+        }
+
+        public static bool operator <(Term a, Term b)
+        {
+            return a.N < b.N;
         }
     }
 
