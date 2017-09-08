@@ -29,7 +29,10 @@ namespace Raft
             _token = token;
             _completionSource = new TaskCompletionSource<bool>();
 
-            _token.Register(() => _completionSource.TrySetCanceled());
+            _token.Register(() => {
+                    _completed = true;
+                    _completionSource.TrySetCanceled();
+                });
 
             // TODO: if we have e.g. 6 peers -- is this actually
             // correct?  I think so, for majority we need > 50% (half
@@ -59,7 +62,9 @@ namespace Raft
                 Votes.Count + Nacks.Count == PeerCount)
             {
                 _completed = true;
-                _completionSource.SetResult(Votes.Count >= QuorumSize);
+                // we use TrySetResult here, in case we either race
+                // with other Record() calls, or a cancel.
+                _completionSource.TrySetResult(Votes.Count >= QuorumSize);
             }
         }
 
@@ -189,7 +194,7 @@ namespace Raft
         private Task TransitionToLeader()
         {
             // only a candidate can be a leader
-            Debug.Assert(_state == State.Candidate);
+            Debug.Assert(_state == State.Candidate, $"Expected state to be Candidate, not {_state}");
 
             // cancel any previous election we are a candidate in (e.g. it timed out)
             if (_electionCancellationSource != null)
@@ -198,6 +203,8 @@ namespace Raft
                 _electionCancellationSource.Dispose();
                 _electionCancellationSource = null;
             }
+
+            Console.WriteLine($"Look at me, I ({Id}) am the leader now.");
 
             // Send initial empty AppendEntries RPCs (heartbeat) to
             // each server; repeat during idle periods to prevent
@@ -250,6 +257,9 @@ namespace Raft
                     VoteGranted = true,
                 });
 
+            // record that this round, we are voting for ourselves
+            _votedFor = Id;
+
             // we reset the election timer right before
             // TransitionToCandidate is called
 
@@ -284,7 +294,6 @@ namespace Raft
                 _electionCancellationSource = null;
                 return;
             }
-
 
             await TransitionToLeader();
         }
