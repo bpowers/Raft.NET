@@ -239,6 +239,19 @@ namespace Raft
             // send AppendEntries RPCs to each server
             // if that server's nextIndex <= log index, send w/ log entries starting at nextIndex
             // else send empty AppendEntries RPC
+
+            IEnumerable<Task<IPeerResponse>> responses =
+                _config.Peers.Where(id => id.N != Id.N).Select(id => _peerRpc(id, new AppendEntriesRequest<TWriteOp>()
+                    {
+                        Term = _currentTerm,
+                        LeaderId = Id,
+                        PrevLogIndex = _lastApplied,
+                        PrevLogTerm = _currentTerm,
+                        Entries = new List<ILogEntry<TWriteOp>>(),
+                        LeaderCommit = _lastApplied,
+                    }));
+
+            // await responses
         }
 
         private void SendAppendEntriesRpc()
